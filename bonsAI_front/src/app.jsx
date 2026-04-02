@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { fetchSensors, streamChat } from "./lib/api.js";
+import { demoSensors } from "./lib/demo.js";
 
 let messageSequence = 0;
 
@@ -9,7 +10,7 @@ const quickPrompts = [
   "光は足りていそう？"
 ];
 
-const plantProfile = { id: "plant-1", name: "言葉", species: "パキラ", season: "春の気配", tag: "草花" };
+const plantProfile = { name: "言葉", species: "パキラ", season: "春の気配" };
 
 function createMessageId() {
   messageSequence += 1;
@@ -38,20 +39,6 @@ function formatLux(value) {
 function formatTemperature(value) {
   if (typeof value !== "number") return "--°C";
   return `${value.toFixed(1)}°C`;
-}
-
-function buildPlantMetrics(index, sensors) {
-  const soil = typeof sensors.soilMoisture === "number" ? sensors.soilMoisture + index * 4 - 5 : null;
-  const lux = typeof sensors.illuminance === "number" ? sensors.illuminance - index * 920 : null;
-  const temp = typeof sensors.temperature === "number" ? sensors.temperature + index * 0.25 - 0.3 : null;
-  const humidity = typeof sensors.humidity === "number" ? sensors.humidity - index * 2 + 1 : null;
-
-  return {
-    soilMoisture: soil == null ? null : Math.max(10, Math.min(88, soil)),
-    illuminance: lux == null ? null : Math.max(1200, lux),
-    temperature: temp == null ? null : temp,
-    humidity: humidity == null ? null : Math.max(28, Math.min(80, humidity))
-  };
 }
 
 function LeafMark() {
@@ -128,15 +115,7 @@ function MessageBubble({ message, plantName }) {
 export default function App() {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
-  const [sensors, setSensors] = useState({
-    temperature: 24.6,
-    humidity: 58,
-    soilMoisture: 43,
-    illuminance: 12800,
-    lastUpdated: "just now",
-    source: "fallback"
-  });
-  const [sensorSource, setSensorSource] = useState("fallback");
+  const [sensors, setSensors] = useState(demoSensors);
   const [chatSource, setChatSource] = useState("offline");
   const [isStreaming, setIsStreaming] = useState(false);
   const listRef = useRef(null);
@@ -149,7 +128,6 @@ export default function App() {
       const nextSensors = await fetchSensors(controller.signal);
       if (!active) return;
       setSensors(nextSensors);
-      setSensorSource(nextSensors.source);
     }
 
     loadSensors();
@@ -170,7 +148,6 @@ export default function App() {
 
   const selectedPlant = plantProfile;
   const isConnected = chatSource === "live";
-  const selectedMetrics = useMemo(() => buildPlantMetrics(0, sensors), [sensors]);
 
   const promptHistory = useMemo(
     () =>
@@ -204,14 +181,8 @@ export default function App() {
 
     try {
       const result = await streamChat({
-        message: `${selectedPlant.name}: ${trimmed}`,
-        history: [
-          ...promptHistory,
-          {
-            role: "user",
-            content: `${selectedPlant.name}に向けて: ${trimmed}`
-          }
-        ],
+        message: trimmed,
+        history: promptHistory,
         sensors,
         onDelta: (delta) => {
           setMessages((current) =>
@@ -283,17 +254,17 @@ export default function App() {
           <div className="sensor-strip">
             <span className="mini-badge">
               <WaterMark />
-              土壌 {formatPercent(selectedMetrics.soilMoisture)}
+              土壌 {formatPercent(sensors.soilMoisture)}
             </span>
             <span className="mini-badge">
               <SunMark />
-              {formatLux(selectedMetrics.illuminance)}
+              {formatLux(sensors.illuminance)}
             </span>
             <span className="mini-badge">
-              温度 {formatTemperature(selectedMetrics.temperature)}
+              温度 {formatTemperature(sensors.temperature)}
             </span>
             <span className="mini-badge">
-              湿度 {formatPercent(selectedMetrics.humidity)}
+              湿度 {formatPercent(sensors.humidity)}
             </span>
           </div>
 

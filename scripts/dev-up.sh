@@ -55,7 +55,7 @@ wait_for_http() {
 }
 
 ensure_command curl
-ensure_command npm
+ensure_command bun
 ensure_command go
 
 if ! command -v llama-server >/dev/null 2>&1 && [ ! -x "$ROOT_DIR/bonsAI_LLM/scripts/start_qwen4b_server.sh" ]; then
@@ -104,7 +104,7 @@ wait_for_http "http://127.0.0.1:$BACKEND_PORT/healthz" "Go backend"
 if ! is_running_pidfile "$FRONTEND_PID_FILE"; then
   (
     cd "$ROOT_DIR/bonsAI_front"
-    nohup env BONSAI_DEV_API_TARGET="http://127.0.0.1:$BACKEND_PORT" npm run dev >"$LOG_DIR/frontend.log" 2>&1 &
+    nohup env BONSAI_DEV_API_TARGET="http://127.0.0.1:$BACKEND_PORT" bun run dev >"$LOG_DIR/frontend.log" 2>&1 &
     echo $! >"$FRONTEND_PID_FILE"
   )
   echo "started Vite frontend"

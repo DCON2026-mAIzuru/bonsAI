@@ -108,7 +108,7 @@ func buildChatCompletionsRequest(model string, request domain.ChatRequest, senso
 		},
 	}
 
-	history := normalizedHistory(request.History, request.Message)
+	history := normalizedHistory(request.History)
 	for _, message := range history {
 		role := normalizeRole(message.Role)
 		if role == "" {
@@ -168,12 +168,11 @@ func buildSystemPrompt(sensors domain.SensorSnapshot) string {
 	)
 }
 
-func normalizedHistory(history []domain.ChatMessage, currentMessage string) []domain.ChatMessage {
+func normalizedHistory(history []domain.ChatMessage) []domain.ChatMessage {
 	if len(history) == 0 {
 		return nil
 	}
 
-	trimmedCurrent := strings.TrimSpace(currentMessage)
 	normalized := make([]domain.ChatMessage, 0, len(history))
 	for _, item := range history {
 		role := normalizeRole(item.Role)
@@ -189,13 +188,6 @@ func normalizedHistory(history []domain.ChatMessage, currentMessage string) []do
 
 	if len(normalized) == 0 {
 		return nil
-	}
-
-	last := normalized[len(normalized)-1]
-	if last.Role == "user" && trimmedCurrent != "" {
-		if strings.Contains(last.Content, trimmedCurrent) || strings.Contains(trimmedCurrent, last.Content) {
-			return normalized[:len(normalized)-1]
-		}
 	}
 
 	return normalized
