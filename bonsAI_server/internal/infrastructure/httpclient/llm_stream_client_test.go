@@ -57,7 +57,7 @@ func TestLLMStreamClientUsesChatCompletionsAndNormalizesStream(t *testing.T) {
 		Message: "水やりは必要？",
 		History: []domain.ChatMessage{
 			{Role: "assistant", Content: "こんにちは。"},
-			{Role: "user", Content: "水やりは必要？"},
+			{Role: "user", Content: "昨日は大丈夫だった？"},
 		},
 	}, domain.SensorSnapshot{
 		Temperature:  23.1,
@@ -89,16 +89,21 @@ func TestLLMStreamClientUsesChatCompletionsAndNormalizesStream(t *testing.T) {
 	}
 }
 
-func TestNormalizedHistoryDropsDuplicatedCurrentUserMessage(t *testing.T) {
+func TestNormalizedHistoryFiltersInvalidMessages(t *testing.T) {
 	t.Parallel()
 
 	history := normalizedHistory([]domain.ChatMessage{
 		{Role: "assistant", Content: "こんにちは"},
-		{Role: "user", Content: "言葉に向けて: 水やりは必要？"},
-	}, "水やりは必要？")
+		{Role: "tool", Content: "ignored"},
+		{Role: "user", Content: "  水やりは必要？  "},
+		{Role: "assistant", Content: "   "},
+	})
 
-	if len(history) != 1 {
+	if len(history) != 2 {
 		t.Fatalf("len(history) = %d", len(history))
+	}
+	if history[1].Content != "水やりは必要？" {
+		t.Fatalf("history[1].Content = %q", history[1].Content)
 	}
 }
 

@@ -1,23 +1,28 @@
-FROM node:22-bookworm-slim AS frontend-builder
+FROM oven/bun:1.3.11 AS frontend-builder
 WORKDIR /app/bonsAI_front
 
 COPY bonsAI_front/package.json ./
-RUN npm install
+COPY bonsAI_front/bun.lock ./
+RUN bun install --frozen-lockfile
 
 COPY bonsAI_front/index.html ./index.html
 COPY bonsAI_front/vite.config.js ./vite.config.js
 COPY bonsAI_front/public ./public
 COPY bonsAI_front/src ./src
-RUN npm run build
+RUN bun run build
 
 FROM golang:1.25-bookworm AS backend-builder
 WORKDIR /app/bonsAI_server
+
+ARG TARGETOS
+ARG TARGETARCH
 
 COPY bonsAI_server/go.mod bonsAI_server/go.sum ./
 RUN go mod download
 
 COPY bonsAI_server ./
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /out/bonsai_server .
+RUN TARGET_OS="${TARGETOS:-linux}" TARGET_ARCH="${TARGETARCH:-$(go env GOARCH)}" \
+  && CGO_ENABLED=0 GOOS="$TARGET_OS" GOARCH="$TARGET_ARCH" go build -o /out/bonsai_server .
 
 FROM debian:bookworm-slim
 WORKDIR /app

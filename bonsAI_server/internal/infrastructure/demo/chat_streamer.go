@@ -2,7 +2,6 @@ package demo
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -84,12 +83,4 @@ func replyChunks(message string, sensors domain.SensorSnapshot) []string {
 		chunks = append(chunks, part)
 	}
 	return chunks
-}
-
-func MarshalSSE(event string, payload any) ([]byte, error) {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-	return []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", event, body)), nil
 }

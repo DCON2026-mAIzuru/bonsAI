@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"bonsai_server/internal/domain"
-	"bonsai_server/internal/infrastructure/demo"
+	"bonsai_server/internal/sseutil"
 )
 
 type ginStreamWriter struct {
@@ -28,7 +28,7 @@ func (w *ginStreamWriter) WriteChunk(chunk []byte) (int, error) {
 }
 
 func (w *ginStreamWriter) WriteEvent(event string, payload any) error {
-	body, err := demo.MarshalSSE(event, payload)
+	body, err := sseutil.MarshalSSE(event, payload)
 	if err != nil {
 		return err
 	}
