@@ -1,5 +1,5 @@
 [Unit]
-Description=bonsAI llama.cpp Qwen2.5 3B server
+Description=bonsAI llama.cpp local LLM server
 After=network.target
 
 [Service]
@@ -7,7 +7,7 @@ Type=simple
 User=pi
 WorkingDirectory=/opt/bonsAI/bonsAI_LLM
 Environment=BONSAI_LLM_ENV_FILE=/opt/bonsAI/bonsAI_LLM/.env
-ExecStart=/opt/bonsAI/bonsAI_LLM/scripts/start_qwen4b_server.sh
+ExecStart=/opt/bonsAI/bonsAI_LLM/scripts/start_llm_server.sh
 Restart=always
 RestartSec=5
 

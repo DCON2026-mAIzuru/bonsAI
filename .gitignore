@@ -13,6 +13,7 @@ tmp/
 
 bonsAI_front/node_modules/
 bonsAI_front/dist/
+bonsAI_front/.vite/
 
 bonsAI_server/tmp/
 

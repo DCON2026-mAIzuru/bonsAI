@@ -4,10 +4,10 @@
 
 この構成では、LLM ノードは localhost のみで待ち受けます。
 
-- 推奨モデル: Qwen2.5 3B Instruct の GGUF 4bit 量子化版
+- 現在の試験モデル: Gemma 4 E2B Instruct の GGUF 量子化版
 - 推奨ポート: `127.0.0.1:8081`
 - Go バックエンド接続先: `http://127.0.0.1:8081/v1/chat/completions`
-- バックエンドからのモデル名: `qwen2.5-3b`
+- バックエンドからのモデル名: `gemma-4-e2b-it`
 
 ## 前提
 
@@ -17,12 +17,13 @@
 - アクティブクーラー推奨
 - できれば NVMe SSD ブート
 
-設計書の制約に合わせ、メモリ圧迫を避けるため `Qwen2.5 3B + 4bit + ctx 2048` を初期値にしています。
+まず Gemma 4 E2B を試せるようにしていますが、Raspberry Pi 5 (8GB) では重い量子化は厳しい可能性があります。既定は `unsloth/gemma-4-E2B-it-GGUF` の `Q4_K_M` にしてあります。`ctx 2048` は据え置きで、必要に応じてさらに軽くしてください。
 
 ## ディレクトリ
 
 - `scripts/bootstrap_llama_cpp.sh`: llama.cpp を取得してビルド
-- `scripts/start_qwen4b_server.sh`: Qwen2.5 3B サーバー起動
+- `scripts/start_llm_server.sh`: 汎用の LLM サーバー起動
+- `scripts/start_qwen4b_server.sh`: 旧スクリプト名の互換ラッパー
 - `systemd/bonsai-llm.service`: systemd ユニット例
 - `.env.example`: Pi 上の LLM 設定テンプレート
 
@@ -43,28 +44,28 @@ cp .env.example .env
 ./scripts/bootstrap_llama_cpp.sh
 ```
 
-3. Qwen2.5 3B の GGUF ファイルを配置する
+3. Gemma 4 E2B の GGUF を使う
 
 ```bash
-mkdir -p /opt/bonsAI/models
-# 例: /opt/bonsAI/models/qwen2.5-3b-instruct-q4_k_m.gguf
+# 既定の .env.example のままで
+# unsloth/gemma-4-E2B-it-GGUF の Q4_K_M を参照します
 ```
 
 注意:
-モデルの配布元によって実ファイル名は変わるので、`.env` の `BONSAI_LLM_MODEL_FILE` を実際の GGUF パスに合わせて更新してください。
+ローカルの GGUF ファイルを使いたい場合は、`.env` の `BONSAI_LLM_MODEL_FILE` に実ファイルを指定し、`BONSAI_LLM_HF_REPO` と `BONSAI_LLM_HF_FILE` を空にしてください。
 
-ローカルファイルを置かずに Hugging Face から直接取得したい場合は、`.env` に次を設定してから起動しても構いません。
+既定の Hugging Face 設定は次です。
 
 ```bash
-BONSAI_LLM_HF_REPO=Qwen/Qwen2.5-3B-Instruct-GGUF
-BONSAI_LLM_HF_FILE=qwen2.5-3b-instruct-q4_k_m.gguf
+BONSAI_LLM_HF_REPO=unsloth/gemma-4-E2B-it-GGUF
+BONSAI_LLM_HF_FILE=gemma-4-E2B-it-Q4_K_M.gguf
 ```
 
 4. サーバーを起動する
 
 ```bash
 cd /path/to/bonsAI/bonsAI_LLM
-./scripts/start_qwen4b_server.sh
+./scripts/start_llm_server.sh
 ```
 
 5. 疎通確認
@@ -89,7 +90,7 @@ sudo systemctl status bonsai-llm.service
 
 ```bash
 BONSAI_LLM_CHAT_STREAM_URL=http://127.0.0.1:8081/v1/chat/completions
-BONSAI_LLM_MODEL=qwen2.5-3b
+BONSAI_LLM_MODEL=gemma-4-e2b-it
 ```
 
 ## 補足
