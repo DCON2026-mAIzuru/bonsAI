@@ -24,7 +24,7 @@ bun run build
 - `GET /api/sensors`
 - `POST /api/chat/stream`
 
-`/api/chat/stream` は `text/event-stream` を推奨していますが、通常のテキストストリームでも表示できます。Qwen が未接続の場合、フロントはデモ応答に落とさず接続エラーを表示します。
+`/api/chat/stream` は `text/event-stream` を推奨していますが、通常のテキストストリームでも表示できます。LLM が未接続の場合、フロントはデモ応答に落とさず接続エラーを表示します。
 
 ## 設定
 

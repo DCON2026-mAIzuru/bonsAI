@@ -27,7 +27,7 @@ func TestLLMStreamClientUsesChatCompletionsAndNormalizesStream(t *testing.T) {
 			t.Fatalf("decode request: %v", err)
 		}
 
-		if payload["model"] != "qwen2.5-3b" {
+		if payload["model"] != "gemma-4-e2b-it" {
 			t.Fatalf("model = %v", payload["model"])
 		}
 		if payload["stream"] != true {
@@ -50,7 +50,7 @@ func TestLLMStreamClientUsesChatCompletionsAndNormalizesStream(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewLLMStreamClient(server.URL+"/v1/chat/completions", "qwen2.5-3b", server.Client())
+	client := NewLLMStreamClient(server.URL+"/v1/chat/completions", "gemma-4-e2b-it", server.Client())
 	writer := &capturingStreamWriter{}
 
 	err := client.Stream(t.Context(), domain.ChatRequest{

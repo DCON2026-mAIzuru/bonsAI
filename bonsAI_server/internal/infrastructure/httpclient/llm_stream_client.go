@@ -42,7 +42,7 @@ func NewLLMStreamClient(endpoint, model string, client *http.Client) *LLMStreamC
 
 	model = strings.TrimSpace(model)
 	if model == "" {
-		model = "qwen2.5-3b"
+		model = "gemma-4-e2b-it"
 	}
 
 	return &LLMStreamClient{

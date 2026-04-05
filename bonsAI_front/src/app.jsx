@@ -22,7 +22,7 @@ const initialMessages = [
     id: createMessageId(),
     role: "assistant",
     content:
-      "こんにちは。Qwen とつながると、盆栽の様子を見ながら静かに返答します。まずは水やりや日照について聞いてみてください。"
+      "こんにちは。ローカル LLM とつながると、盆栽の様子を見ながら静かに返答します。まずは水やりや日照について聞いてみてください。"
   }
 ];
 
@@ -202,7 +202,7 @@ export default function App() {
             ? {
                 ...message,
                 content:
-                  "Qwen に接続できませんでした。llama.cpp サーバーと Go バックエンドが起動しているか確認してください。"
+                  "LLM に接続できませんでした。llama.cpp サーバーと Go バックエンドが起動しているか確認してください。"
               }
             : message
         )
@@ -225,7 +225,7 @@ export default function App() {
         <div className="hero-status">
           <span className={`status-pill${isConnected ? " status-pill-online" : ""}`}>
             <span className="status-dot" />
-            {isConnected ? "Qwen Live" : "Qwen Offline"}
+            {isConnected ? "LLM Live" : "LLM Offline"}
           </span>
           <span className="status-time">{sensors.lastUpdated}</span>
         </div>
@@ -310,7 +310,7 @@ export default function App() {
               <p>
                 {isStreaming
                   ? `${selectedPlant.name} が言葉を選んでいます...`
-                  : "Qwen 接続時は /api/chat/stream からストリーミング表示します。"}
+                  : "LLM 接続時は /api/chat/stream からストリーミング表示します。"}
               </p>
               <button type="submit" disabled={isStreaming || !input.trim()}>
                 {isStreaming ? "Streaming..." : "Send"}
