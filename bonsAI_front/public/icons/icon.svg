@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bonsaiBg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f7f4ed" />
+      <stop offset="100%" stop-color="#e7dcc8" />
+    </linearGradient>
+    <linearGradient id="bonsaiPot" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#6d8e71" />
+      <stop offset="100%" stop-color="#4f7353" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#bonsaiBg)" />
+  <circle cx="396" cy="124" r="76" fill="#efe3bd" opacity="0.82" />
+  <path
+    d="M136 350c26-82 96-134 185-134 22 0 47 4 72 13-30-44-82-70-142-70-94 0-175 63-204 149 24-13 54-20 89-20Z"
+    fill="#9eb494"
+    opacity="0.54"
+  />
+  <path
+    d="M182 332c0-72 52-124 126-124 48 0 91 22 118 59-17-7-34-10-50-10-57 0-101 33-118 91-27-14-49-16-76-16Z"
+    fill="#6d976f"
+  />
+  <path
+    d="M264 276c-48 0-90-29-108-72 10-2 19-3 28-3 39 0 74 17 98 46 24-29 59-46 98-46 8 0 18 1 28 3-18 43-60 72-108 72h-36Z"
+    fill="#547c58"
+  />
+  <path
+    d="M256 320c0-57 18-102 55-137"
+    fill="none"
+    stroke="#4a5b37"
+    stroke-linecap="round"
+    stroke-width="18"
+  />
+  <path
+    d="M254 320c0-70-24-121-73-155"
+    fill="none"
+    stroke="#4a5b37"
+    stroke-linecap="round"
+    stroke-width="18"
+  />
+  <path
+    d="M155 348h202l-23 70H178l-23-70Z"
+    fill="url(#bonsaiPot)"
+  />
+  <rect x="127" y="418" width="258" height="28" rx="14" fill="#8ca786" />
+  <path
+    d="M182 332c10 0 24 5 40 15 14 9 31 15 47 15 19 0 38-7 57-21 17-12 33-18 47-18 16 0 31 7 45 20"
+    fill="none"
+    stroke="#b9caa8"
+    stroke-linecap="round"
+    stroke-width="12"
+  />
+</svg>
