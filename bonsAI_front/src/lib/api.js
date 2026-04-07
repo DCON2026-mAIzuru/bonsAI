@@ -1,4 +1,4 @@
-import { demoSensors } from "./demo.js";
+import { createDemoSensorsSnapshot } from "./demo.js";
 
 const runtimeConfig = window.__BONSAI_CONFIG__ || {};
 const apiBase = (import.meta.env.VITE_API_BASE || runtimeConfig.apiBase || "").replace(
@@ -12,19 +12,24 @@ function toNumber(value, fallback) {
 }
 
 function normalizeSensors(payload = {}) {
+  const fallbackSensors = createDemoSensorsSnapshot();
+
   return {
     temperature: toNumber(
       payload.temperature ?? payload.temp_c ?? payload.temp,
-      demoSensors.temperature
+      fallbackSensors.temperature
     ),
-    humidity: toNumber(payload.humidity ?? payload.humidity_percent, demoSensors.humidity),
+    humidity: toNumber(payload.humidity ?? payload.humidity_percent, fallbackSensors.humidity),
     soilMoisture: toNumber(
       payload.soilMoisture ?? payload.soil_moisture ?? payload.moisture,
-      demoSensors.soilMoisture
+      fallbackSensors.soilMoisture
     ),
-    illuminance: toNumber(payload.illuminance ?? payload.light_lux ?? payload.lux, demoSensors.illuminance),
-    lastUpdated: payload.lastUpdated ?? payload.timestamp ?? "just now",
-    source: "live"
+    illuminance: toNumber(
+      payload.illuminance ?? payload.light_lux ?? payload.lux,
+      fallbackSensors.illuminance
+    ),
+    lastUpdated: payload.lastUpdated ?? payload.timestamp ?? fallbackSensors.lastUpdated,
+    source: payload.source ?? "live"
   };
 }
 
@@ -42,8 +47,24 @@ export async function fetchSensors(signal) {
     const payload = await response.json();
     return normalizeSensors(payload);
   } catch (_error) {
-    return demoSensors;
+    return createDemoSensorsSnapshot();
   }
+}
+
+export async function fetchSystemStatus(signal) {
+  const response = await fetch(`${apiBase}/api/system/status`, {
+    headers: { Accept: "application/json" },
+    signal
+  });
+
+  if (!response.ok) {
+    throw new Error(`System API returned ${response.status}`);
+  }
+
+  const payload = await response.json();
+  return {
+    llmConnected: payload.llmConnected === true
+  };
 }
 
 function extractDelta(payload) {
@@ -154,4 +175,32 @@ export async function streamChat({ message, history, sensors, onDelta }) {
   }
 
   return { source: "live" };
+}
+
+export async function translateChat({ messages, targetLanguage }) {
+  const response = await fetch(`${apiBase}/api/chat/translate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      messages,
+      targetLanguage
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Translate API returned ${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (!Array.isArray(payload.translations)) {
+    return [];
+  }
+
+  return payload.translations.map((translation) => ({
+    id: translation.id,
+    content: translation.content ?? ""
+  }));
 }
