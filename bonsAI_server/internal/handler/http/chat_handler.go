@@ -28,3 +28,19 @@ func (h *ChatHandler) Stream(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "failed to stream chat"})
 	}
 }
+
+func (h *ChatHandler) Translate(c *gin.Context) {
+	var request domain.ChatTranslationRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json body"})
+		return
+	}
+
+	translations, err := h.chatService.Translate(c.Request.Context(), request)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "failed to translate chat"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"translations": translations})
+}

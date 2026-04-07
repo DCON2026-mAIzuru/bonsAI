@@ -10,16 +10,24 @@ import (
 )
 
 type ChatService struct {
-	sensors  *SensorService
-	primary  domain.ChatStreamer
-	fallback domain.ChatStreamer
+	sensors            *SensorService
+	primary            domain.ChatStreamer
+	fallback           domain.ChatStreamer
+	primaryTranslator  domain.ChatTranslator
+	fallbackTranslator domain.ChatTranslator
 }
 
-func NewChatService(sensors *SensorService, primary, fallback domain.ChatStreamer) *ChatService {
+func NewChatService(
+	sensors *SensorService,
+	primary, fallback domain.ChatStreamer,
+	primaryTranslator, fallbackTranslator domain.ChatTranslator,
+) *ChatService {
 	return &ChatService{
-		sensors:  sensors,
-		primary:  primary,
-		fallback: fallback,
+		sensors:            sensors,
+		primary:            primary,
+		fallback:           fallback,
+		primaryTranslator:  primaryTranslator,
+		fallbackTranslator: fallbackTranslator,
 	}
 }
 
@@ -44,4 +52,29 @@ func (s *ChatService) Stream(ctx context.Context, request domain.ChatRequest, wr
 	}
 
 	return s.fallback.Stream(ctx, request, sensors, writer)
+}
+
+func (s *ChatService) Translate(
+	ctx context.Context,
+	request domain.ChatTranslationRequest,
+) ([]domain.ChatTranslationResult, error) {
+	var primaryErr error
+
+	if s.primaryTranslator != nil {
+		if translations, err := s.primaryTranslator.Translate(ctx, request); err == nil {
+			return translations, nil
+		} else {
+			primaryErr = err
+			log.Printf("primary translation failed, falling back: %v", err)
+		}
+	}
+
+	if s.fallbackTranslator == nil {
+		if primaryErr != nil {
+			return nil, fmt.Errorf("chat translator is unavailable after primary failure: %w", primaryErr)
+		}
+		return nil, errors.New("chat translator is unavailable")
+	}
+
+	return s.fallbackTranslator.Translate(ctx, request)
 }

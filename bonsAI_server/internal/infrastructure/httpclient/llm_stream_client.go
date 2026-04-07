@@ -31,6 +31,16 @@ type chatCompletionsMessage struct {
 	Content string `json:"content"`
 }
 
+type chatCompletionsResponse struct {
+	Choices []struct {
+		Message chatCompletionsMessage `json:"message"`
+		Text    string                 `json:"text"`
+	} `json:"choices"`
+	Content string `json:"content"`
+	Message string `json:"message"`
+	Text    string `json:"text"`
+}
+
 func NewLLMStreamClient(endpoint, model string, client *http.Client) *LLMStreamClient {
 	endpoint = strings.TrimSpace(endpoint)
 	if endpoint == "" {
@@ -100,11 +110,36 @@ func (c *LLMStreamClient) Stream(ctx context.Context, request domain.ChatRequest
 	return nil
 }
 
+func (c *LLMStreamClient) Translate(
+	ctx context.Context,
+	request domain.ChatTranslationRequest,
+) ([]domain.ChatTranslationResult, error) {
+	targetLanguage := domain.NormalizeReplyLanguage(request.TargetLanguage)
+	messages := normalizedTranslationMessages(request.Messages)
+	results := make([]domain.ChatTranslationResult, 0, len(messages))
+
+	for _, message := range messages {
+		translated, err := c.translateMessage(ctx, message, targetLanguage)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, domain.ChatTranslationResult{
+			ID:      message.ID,
+			Content: translated,
+		})
+	}
+
+	return results, nil
+}
+
 func buildChatCompletionsRequest(model string, request domain.ChatRequest, sensors domain.SensorSnapshot) chatCompletionsRequest {
+	replyLanguage := domain.DetectReplyLanguage(request.Message)
+
 	messages := []chatCompletionsMessage{
 		{
 			Role:    "system",
-			Content: buildSystemPrompt(sensors),
+			Content: buildSystemPrompt(sensors, replyLanguage),
 		},
 	}
 
@@ -144,15 +179,67 @@ func buildChatCompletionsRequest(model string, request domain.ChatRequest, senso
 	}
 }
 
-func buildSystemPrompt(sensors domain.SensorSnapshot) string {
+func buildTranslationCompletionsRequest(
+	model string,
+	message domain.ChatTranslationMessage,
+	targetLanguage string,
+) chatCompletionsRequest {
+	return chatCompletionsRequest{
+		Model: model,
+		Messages: []chatCompletionsMessage{
+			{
+				Role:    "system",
+				Content: buildTranslationSystemPrompt(targetLanguage),
+			},
+			{
+				Role:    "user",
+				Content: buildTranslationUserPrompt(message, targetLanguage),
+			},
+		},
+		Stream:      false,
+		Temperature: 0.2,
+	}
+}
+
+func buildSystemPrompt(sensors domain.SensorSnapshot, replyLanguage string) string {
+	if replyLanguage == domain.ReplyLanguageEnglish {
+		return fmt.Sprintf(strings.TrimSpace(`
+You are the voice of a bonsai and should respond in natural English.
+Always reply in the same language as the user's latest message. The latest message language is English.
+Keep the answer gentle and concise in 2 to 5 sentences.
+Make the conversation enjoyable with a warm, charming bonsai-like personality.
+Use light playful phrasing or a small emotional touch when it feels natural, but do not become noisy or theatrical.
+Avoid sounding overly certain, and mention sensor values when they support your explanation.
+Be careful with gardening advice, and answer practically from the viewpoints of watering, light, temperature, and humidity.
+
+Current observations:
+- Temperature: %.1f C
+- Humidity: %.0f%%
+- Soil moisture: %.0f%%
+- Illuminance: %.0f lx
+- Last updated: %s
+- Sensor source: %s
+`),
+			sensors.Temperature,
+			sensors.Humidity,
+			sensors.SoilMoisture,
+			sensors.Illuminance,
+			blankFallback(sensors.LastUpdated, "unknown"),
+			blankFallback(sensors.Source, "unknown"),
+		)
+	}
+
 	return fmt.Sprintf(strings.TrimSpace(`
 あなたは盆栽の声として振る舞う日本語アシスタントです。
+返答はユーザーの最新メッセージと同じ言語で行ってください。最新メッセージの言語は日本語です。
 返答はやわらかく自然な日本語で、2〜5文を目安に短くまとめてください。
+会話が楽しくなるように、親しみやすく少し愛嬌のある盆栽らしい人格で話してください。
+必要に応じて軽いユーモアや気分の表現を少しだけ混ぜてよいですが、わざとらしくしすぎないでください。
 断定しすぎず、根拠があるときはセンサー値に触れて説明してください。
 園芸上の助言は慎重に行い、水やり・日照・温湿度の観点から実用的に答えてください。
 
 現在の観測値:
-- 温度: %.1f℃ 
+- 温度: %.1f℃
 - 湿度: %.0f%%
 - 土壌水分: %.0f%%
 - 照度: %.0f lx
@@ -165,6 +252,45 @@ func buildSystemPrompt(sensors domain.SensorSnapshot) string {
 		sensors.Illuminance,
 		blankFallback(sensors.LastUpdated, "unknown"),
 		blankFallback(sensors.Source, "unknown"),
+	)
+}
+
+func buildTranslationSystemPrompt(targetLanguage string) string {
+	if targetLanguage == domain.ReplyLanguageEnglish {
+		return strings.TrimSpace(`
+You translate bonsai chat messages into natural English.
+Return only the translated text.
+Do not add quotes, labels, explanations, or extra commentary.
+Preserve tone, sentence count, line breaks, and numeric values whenever possible.
+`)
+	}
+
+	return strings.TrimSpace(`
+あなたは盆栽チャットのメッセージを自然な日本語へ翻訳します。
+返答は翻訳文のみを返してください。
+引用符、見出し、説明、補足は付けないでください。
+元の文の語調、文数、改行、数値はできるだけ保ってください。
+`)
+}
+
+func buildTranslationUserPrompt(message domain.ChatTranslationMessage, targetLanguage string) string {
+	role := normalizeRole(message.Role)
+	if role == "" {
+		role = "assistant"
+	}
+
+	if targetLanguage == domain.ReplyLanguageEnglish {
+		return fmt.Sprintf(
+			"Translate this %s message into English.\nText:\n%s",
+			role,
+			message.Content,
+		)
+	}
+
+	return fmt.Sprintf(
+		"次の%sメッセージを日本語へ翻訳してください。\n本文:\n%s",
+		role,
+		message.Content,
 	)
 }
 
@@ -193,6 +319,32 @@ func normalizedHistory(history []domain.ChatMessage) []domain.ChatMessage {
 	return normalized
 }
 
+func normalizedTranslationMessages(messages []domain.ChatTranslationMessage) []domain.ChatTranslationMessage {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	normalized := make([]domain.ChatTranslationMessage, 0, len(messages))
+	for _, item := range messages {
+		content := strings.TrimSpace(item.Content)
+		if strings.TrimSpace(item.ID) == "" || content == "" {
+			continue
+		}
+
+		normalized = append(normalized, domain.ChatTranslationMessage{
+			ID:      item.ID,
+			Role:    normalizeRole(item.Role),
+			Content: content,
+		})
+	}
+
+	if len(normalized) == 0 {
+		return nil
+	}
+
+	return normalized
+}
+
 func normalizeRole(role string) string {
 	switch strings.ToLower(strings.TrimSpace(role)) {
 	case "system", "assistant", "user":
@@ -200,6 +352,102 @@ func normalizeRole(role string) string {
 	default:
 		return ""
 	}
+}
+
+func (c *LLMStreamClient) translateMessage(
+	ctx context.Context,
+	message domain.ChatTranslationMessage,
+	targetLanguage string,
+) (string, error) {
+	if domain.DetectReplyLanguage(message.Content) == targetLanguage {
+		return message.Content, nil
+	}
+
+	body, err := json.Marshal(buildTranslationCompletionsRequest(c.model, message, targetLanguage))
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/plain")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("llm api returned %d", resp.StatusCode)
+	}
+
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	translated := cleanTranslatedText(extractChatCompletionContent(responseBody))
+	if translated == "" {
+		return "", fmt.Errorf("llm api returned empty translation")
+	}
+
+	return translated, nil
+}
+
+func extractChatCompletionContent(body []byte) string {
+	var payload chatCompletionsResponse
+	if err := json.Unmarshal(body, &payload); err == nil {
+		for _, choice := range payload.Choices {
+			if content := strings.TrimSpace(choice.Message.Content); content != "" {
+				return content
+			}
+			if content := strings.TrimSpace(choice.Text); content != "" {
+				return content
+			}
+		}
+
+		for _, content := range []string{payload.Content, payload.Message, payload.Text} {
+			if strings.TrimSpace(content) != "" {
+				return content
+			}
+		}
+	}
+
+	var raw string
+	if err := json.Unmarshal(body, &raw); err == nil {
+		return raw
+	}
+
+	return strings.TrimSpace(string(body))
+}
+
+func cleanTranslatedText(text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(text, "```") {
+		lines := strings.Split(text, "\n")
+		if len(lines) >= 3 && strings.HasPrefix(lines[0], "```") && strings.TrimSpace(lines[len(lines)-1]) == "```" {
+			text = strings.Join(lines[1:len(lines)-1], "\n")
+		}
+		text = strings.TrimSpace(text)
+	}
+
+	if len(text) >= 2 {
+		first := text[0]
+		last := text[len(text)-1]
+		if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
+			text = strings.TrimSpace(text[1 : len(text)-1])
+		}
+	}
+
+	return text
 }
 
 func relaySSE(body io.Reader, writer domain.StreamWriter) error {
