@@ -10,6 +10,7 @@ import (
 	"bonsai_server/internal/config"
 	"bonsai_server/internal/domain"
 	httphandler "bonsai_server/internal/handler/http"
+	"bonsai_server/internal/infrastructure/demo"
 	"bonsai_server/internal/infrastructure/httpclient"
 	"bonsai_server/internal/usecase"
 )
@@ -22,16 +23,22 @@ func main() {
 	var sensorSource domain.SensorSource
 	if cfg.SensorAPIURL != "" {
 		sensorSource = httpclient.NewSensorAPIClient(cfg.SensorAPIURL, &http.Client{Timeout: 4 * time.Second})
+	} else {
+		sensorSource = demo.NewSensorSource(nil)
 	}
 	sensorService := usecase.NewSensorService(sensorSource)
 
 	var liveChatStreamer domain.ChatStreamer
+	var liveChatTranslator domain.ChatTranslator
+	demoChat := demo.NewChatStreamer(0)
 	if cfg.LLMChatStreamURL != "" {
-		liveChatStreamer = httpclient.NewLLMStreamClient(cfg.LLMChatStreamURL, cfg.LLMModel, http.DefaultClient)
+		liveLLMClient := httpclient.NewLLMStreamClient(cfg.LLMChatStreamURL, cfg.LLMModel, http.DefaultClient)
+		liveChatStreamer = liveLLMClient
+		liveChatTranslator = liveLLMClient
 	}
-	chatService := usecase.NewChatService(sensorService, liveChatStreamer, nil)
+	chatService := usecase.NewChatService(sensorService, liveChatStreamer, demoChat, liveChatTranslator, demoChat)
 
-	systemHandler := httphandler.NewSystemHandler(cfg)
+	systemHandler := httphandler.NewSystemHandler(cfg, nil)
 	sensorHandler := httphandler.NewSensorHandler(sensorService)
 	chatHandler := httphandler.NewChatHandler(chatService)
 

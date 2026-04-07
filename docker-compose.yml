@@ -7,9 +7,9 @@ services:
     environment:
       BONSAI_LLM_HOST: 0.0.0.0
       BONSAI_LLM_PORT: 8081
-      BONSAI_LLM_ALIAS: qwen2.5-3b
-      BONSAI_LLM_HF_REPO: Qwen/Qwen2.5-3B-Instruct-GGUF
-      BONSAI_LLM_HF_FILE: qwen2.5-3b-instruct-q4_k_m.gguf
+      BONSAI_LLM_ALIAS: gemma-4-e2b-it
+      BONSAI_LLM_HF_REPO: unsloth/gemma-4-E2B-it-GGUF
+      BONSAI_LLM_HF_FILE: gemma-4-E2B-it-Q4_K_M.gguf
       BONSAI_LLM_CTX_SIZE: 2048
       BONSAI_LLM_THREADS: 4
       BONSAI_LLM_PARALLEL: 1
@@ -39,7 +39,7 @@ services:
       BONSAI_STATIC_DIR: /app/static
       BONSAI_PUBLIC_API_BASE: ""
       BONSAI_LLM_CHAT_STREAM_URL: http://llm:8081/v1/chat/completions
-      BONSAI_LLM_MODEL: qwen2.5-3b
+      BONSAI_LLM_MODEL: gemma-4-e2b-it
     depends_on:
       llm:
         condition: service_healthy

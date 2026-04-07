@@ -1,13 +1,41 @@
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const demoSensors = {
-  temperature: 24.6,
-  humidity: 58,
-  soilMoisture: 43,
-  illuminance: 12800,
-  lastUpdated: "just now",
-  source: "fallback"
-};
+const demoSensorFrames = [
+  { temperature: 24.6, humidity: 58, soilMoisture: 43, illuminance: 12800 },
+  { temperature: 24.9, humidity: 57, soilMoisture: 41, illuminance: 13200 },
+  { temperature: 25.1, humidity: 55, soilMoisture: 38, illuminance: 14000 },
+  { temperature: 24.7, humidity: 60, soilMoisture: 36, illuminance: 11800 },
+  { temperature: 24.3, humidity: 62, soilMoisture: 44, illuminance: 9600 },
+  { temperature: 24.1, humidity: 59, soilMoisture: 47, illuminance: 8800 }
+];
+
+function resolveDemoSlot(date = new Date()) {
+  return Math.floor(date.getTime() / 10000);
+}
+
+export function createDemoSensorsSnapshot(date = new Date()) {
+  const slot = resolveDemoSlot(date);
+  const values = demoSensorFrames[slot % demoSensorFrames.length];
+
+  return {
+    ...values,
+    lastUpdated: new Date(slot * 10000).toISOString(),
+    source: "fallback"
+  };
+}
+
+export const demoSensors = createDemoSensorsSnapshot();
+
+export function createVeryDryDemoSensorsSnapshot(date = new Date()) {
+  return {
+    temperature: 27.2,
+    humidity: 34,
+    soilMoisture: 12,
+    illuminance: 15400,
+    lastUpdated: date.toISOString(),
+    source: "demo-very-dry"
+  };
+}
 
 export async function streamDemoReply({ message, sensors, onDelta }) {
   const lowerMessage = message.toLowerCase();

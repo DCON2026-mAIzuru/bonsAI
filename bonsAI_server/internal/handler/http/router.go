@@ -17,9 +17,11 @@ func NewRouter(cfg config.Config, systemHandler *SystemHandler, sensorHandler *S
 	router.Use(gin.Recovery(), requestLogger())
 
 	router.GET("/healthz", systemHandler.Healthz)
+	router.GET("/api/system/status", systemHandler.Status)
 	router.GET("/runtime-config.js", systemHandler.RuntimeConfig)
 	router.GET("/api/sensors", sensorHandler.GetCurrent)
 	router.POST("/api/chat/stream", chatHandler.Stream)
+	router.POST("/api/chat/translate", chatHandler.Translate)
 	router.NoRoute(spaFallback(cfg.StaticDir))
 
 	return router

@@ -35,12 +35,12 @@ WORKDIR /opt/bonsAI/bonsAI_LLM
 
 COPY bonsAI_LLM/scripts ./scripts
 COPY --from=builder /opt/llama.cpp/build/bin/llama-server /opt/llama.cpp/build/bin/llama-server
-RUN chmod +x ./scripts/bootstrap_llama_cpp.sh ./scripts/start_qwen4b_server.sh
+RUN chmod +x ./scripts/bootstrap_llama_cpp.sh ./scripts/start_llm_server.sh ./scripts/start_qwen4b_server.sh
 
 ENV BONSAI_LLM_SERVER_BIN=/opt/llama.cpp/build/bin/llama-server
 ENV BONSAI_LLM_HOST=0.0.0.0
 ENV BONSAI_LLM_PORT=8081
-ENV BONSAI_LLM_ALIAS=qwen2.5-3b
+ENV BONSAI_LLM_ALIAS=gemma-4-e2b-it
 ENV BONSAI_LLM_CTX_SIZE=2048
 ENV BONSAI_LLM_THREADS=4
 ENV BONSAI_LLM_PARALLEL=1
@@ -50,4 +50,4 @@ ENV BONSAI_LLM_GPU_LAYERS=0
 
 EXPOSE 8081
 
-CMD ["./scripts/start_qwen4b_server.sh"]
+CMD ["./scripts/start_llm_server.sh"]

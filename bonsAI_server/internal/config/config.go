@@ -28,7 +28,7 @@ func Load() Config {
 		StaticDir:        envOrDefault("BONSAI_STATIC_DIR", defaultStaticDir),
 		SensorAPIURL:     strings.TrimRight(strings.TrimSpace(os.Getenv("BONSAI_SENSOR_API_URL")), "/"),
 		LLMChatStreamURL: strings.TrimSpace(os.Getenv("BONSAI_LLM_CHAT_STREAM_URL")),
-		LLMModel:         envOrDefault("BONSAI_LLM_MODEL", "qwen2.5-3b"),
+		LLMModel:         envOrDefault("BONSAI_LLM_MODEL", "gemma-4-e2b-it"),
 		PublicAPIBase:    strings.TrimSpace(os.Getenv("BONSAI_PUBLIC_API_BASE")),
 	}
 }

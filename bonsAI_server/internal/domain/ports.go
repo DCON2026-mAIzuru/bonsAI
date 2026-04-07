@@ -17,3 +17,7 @@ type StreamWriter interface {
 type ChatStreamer interface {
 	Stream(ctx context.Context, request ChatRequest, sensors SensorSnapshot, writer StreamWriter) error
 }
+
+type ChatTranslator interface {
+	Translate(ctx context.Context, request ChatTranslationRequest) ([]ChatTranslationResult, error)
+}
