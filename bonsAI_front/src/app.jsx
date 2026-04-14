@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { fetchSensors, fetchSystemStatus, streamChat, translateChat } from "./lib/api.js";
+import {
+  fetchMemories,
+  fetchSensors,
+  fetchSystemStatus,
+  streamChat,
+  translateChat
+} from "./lib/api.js";
 import { createDemoSensorsSnapshot, createVeryDryDemoSensorsSnapshot } from "./lib/demo.js";
 
 let messageSequence = 0;
@@ -94,10 +100,36 @@ const copyByLanguage = {
 };
 
 const SENSOR_ALERT_COOLDOWN_MS = 30 * 60 * 1000;
+const CHAT_SESSION_STORAGE_KEY = "bonsai-chat-session-id";
 
 function createMessageId() {
   messageSequence += 1;
   return `message-${Date.now()}-${messageSequence}`;
+}
+
+function createChatSessionId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getOrCreateChatSessionId() {
+  if (typeof window === "undefined") {
+    return createChatSessionId();
+  }
+
+  try {
+    const stored = window.localStorage.getItem(CHAT_SESSION_STORAGE_KEY);
+    if (stored) return stored;
+
+    const created = createChatSessionId();
+    window.localStorage.setItem(CHAT_SESSION_STORAGE_KEY, created);
+    return created;
+  } catch (_error) {
+    return createChatSessionId();
+  }
 }
 
 function detectMessageLanguage(message) {
@@ -390,9 +422,132 @@ function MessageBubble({ message, plantName, userLabel, emptyMessage, language }
   );
 }
 
+function MemoryInspector() {
+  const [memories, setMemories] = useState([]);
+  const [status, setStatus] = useState("loading");
+  const [error, setError] = useState("");
+  const [lastLoadedAt, setLastLoadedAt] = useState("");
+  const [chatSessionId] = useState(() => getOrCreateChatSessionId());
+
+  async function loadMemories(signal) {
+    setStatus("loading");
+    setError("");
+
+    try {
+      const nextMemories = await fetchMemories({ limit: 50, signal });
+      setMemories(nextMemories);
+      setLastLoadedAt(new Date().toLocaleTimeString("ja-JP"));
+      setStatus("ready");
+    } catch (loadError) {
+      if (loadError.name === "AbortError") return;
+      setError("Qdrant の記憶を読み込めませんでした。backend と memorydb の起動状態を確認してください。");
+      setStatus("error");
+    }
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadMemories(controller.signal);
+    return () => controller.abort();
+  }, []);
+
+  const currentSessionMemories = memories.filter((memory) => memory.sessionId === chatSessionId);
+
+  return (
+    <div className="shell memory-shell">
+      <div className="shell-pattern" />
+      <header className="hero memory-hero">
+        <div className="hero-copy">
+          <p className="eyebrow">Local Vector DB</p>
+          <h1>記憶ビュー</h1>
+          <p className="hero-lead">
+            Qdrant に保存された会話ターンと、ハッシュベース埋め込みベクトルの先頭だけを確認します。
+          </p>
+        </div>
+        <div className="hero-status">
+          <a className="memory-nav-link" href="./">チャットへ戻る</a>
+          <button className="memory-refresh-button" type="button" onClick={() => loadMemories()}>
+            再読み込み
+          </button>
+        </div>
+      </header>
+
+      <main className="memory-layout panel">
+        <section className="memory-summary">
+          <div>
+            <span className="section-label">Collection</span>
+            <strong>bonsai-memory</strong>
+          </div>
+          <div>
+            <span className="section-label">Total Points</span>
+            <strong>{memories.length}</strong>
+          </div>
+          <div>
+            <span className="section-label">Current Session</span>
+            <strong>{currentSessionMemories.length}</strong>
+          </div>
+          <div>
+            <span className="section-label">Loaded</span>
+            <strong>{lastLoadedAt || "..."}</strong>
+          </div>
+        </section>
+
+        {status === "error" ? <p className="memory-error">{error}</p> : null}
+        {status === "loading" ? <p className="memory-empty">記憶を読み込んでいます...</p> : null}
+        {status === "ready" && memories.length === 0 ? (
+          <p className="memory-empty">まだ Qdrant に会話記憶がありません。チャットで1回送信してから再読み込みしてください。</p>
+        ) : null}
+
+        <section className="memory-list" aria-label="Qdrant memories">
+          {memories.map((memory, index) => (
+            <article
+              className={`memory-card${memory.sessionId === chatSessionId ? " memory-card-current" : ""}`}
+              key={memory.pointId || `${memory.sessionId}-${memory.createdAt}-${index}`}
+            >
+              <div className="memory-card-header">
+                <span>{memory.sessionId === chatSessionId ? "Current session" : "Stored memory"}</span>
+                <time>{memory.createdAt || "created_at unknown"}</time>
+              </div>
+              <dl className="memory-fields">
+                <div>
+                  <dt>session_id</dt>
+                  <dd>{memory.sessionId || "unknown"}</dd>
+                </div>
+                <div>
+                  <dt>point_id</dt>
+                  <dd>{memory.pointId || "unknown"}</dd>
+                </div>
+                <div>
+                  <dt>user_message</dt>
+                  <dd>{memory.userMessage || "(empty)"}</dd>
+                </div>
+                <div>
+                  <dt>assistant_message</dt>
+                  <dd>{memory.assistantMessage || "(empty)"}</dd>
+                </div>
+                <div>
+                  <dt>vector</dt>
+                  <dd>
+                    {memory.vectorSize} dims / [{memory.vectorPreview.map((value) => Number(value).toFixed(3)).join(", ")}]
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          ))}
+        </section>
+      </main>
+    </div>
+  );
+}
+
 export default function App() {
+  if (window.location.pathname === "/memory") {
+    return <MemoryInspector />;
+  }
+
   const [language, setLanguage] = useState("ja");
   const [messages, setMessages] = useState(() => [createLocalizedAssistantMessage("initialMessage")]);
+  const [chatSessionId] = useState(() => getOrCreateChatSessionId());
   const [input, setInput] = useState("");
   const [sensors, setSensors] = useState(() => createDemoSensorsSnapshot());
   const [demoSensorMode, setDemoSensorMode] = useState("live");
@@ -684,7 +839,8 @@ export default function App() {
     let source = "offline";
 
     try {
-      const result = await streamChat({
+      await streamChat({
+        sessionId: chatSessionId,
         message: trimmed,
         history: promptHistory,
         sensors: activeSensors,
@@ -698,7 +854,13 @@ export default function App() {
           );
         }
       });
-      source = result.source;
+
+      try {
+        const status = await fetchSystemStatus();
+        source = status.llmConnected ? "live" : "offline";
+      } catch (_error) {
+        source = "offline";
+      }
     } catch (_error) {
       setMessages((current) =>
         current.map((message) =>

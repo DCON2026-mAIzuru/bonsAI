@@ -21,3 +21,10 @@ type ChatStreamer interface {
 type ChatTranslator interface {
 	Translate(ctx context.Context, request ChatTranslationRequest) ([]ChatTranslationResult, error)
 }
+
+type ChatMemoryStore interface {
+	EnsureReady(ctx context.Context) error
+	Recall(ctx context.Context, sessionID, message string) ([]ChatMemory, error)
+	ListRecent(ctx context.Context, limit int) ([]ChatMemory, error)
+	SaveConversation(ctx context.Context, entry ChatMemoryEntry) error
+}

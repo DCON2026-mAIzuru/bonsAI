@@ -12,7 +12,13 @@ import (
 	"bonsai_server/internal/config"
 )
 
-func NewRouter(cfg config.Config, systemHandler *SystemHandler, sensorHandler *SensorHandler, chatHandler *ChatHandler) *gin.Engine {
+func NewRouter(
+	cfg config.Config,
+	systemHandler *SystemHandler,
+	sensorHandler *SensorHandler,
+	chatHandler *ChatHandler,
+	memoryHandler *MemoryHandler,
+) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery(), requestLogger())
 
@@ -22,6 +28,7 @@ func NewRouter(cfg config.Config, systemHandler *SystemHandler, sensorHandler *S
 	router.GET("/api/sensors", sensorHandler.GetCurrent)
 	router.POST("/api/chat/stream", chatHandler.Stream)
 	router.POST("/api/chat/translate", chatHandler.Translate)
+	router.GET("/api/memories", memoryHandler.List)
 	router.NoRoute(spaFallback(cfg.StaticDir))
 
 	return router

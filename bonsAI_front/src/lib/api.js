@@ -148,7 +148,7 @@ async function consumeSseStream(stream, onDelta) {
   }
 }
 
-export async function streamChat({ message, history, sensors, onDelta }) {
+export async function streamChat({ sessionId, message, history, sensors, onDelta }) {
   const response = await fetch(`${apiBase}/api/chat/stream`, {
     method: "POST",
     headers: {
@@ -156,6 +156,7 @@ export async function streamChat({ message, history, sensors, onDelta }) {
       Accept: "text/event-stream, text/plain, application/json"
     },
     body: JSON.stringify({
+      sessionId,
       message,
       history,
       sensors
@@ -202,5 +203,32 @@ export async function translateChat({ messages, targetLanguage }) {
   return payload.translations.map((translation) => ({
     id: translation.id,
     content: translation.content ?? ""
+  }));
+}
+
+export async function fetchMemories({ limit = 30, signal } = {}) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await fetch(`${apiBase}/api/memories?${params}`, {
+    headers: { Accept: "application/json" },
+    signal
+  });
+
+  if (!response.ok) {
+    throw new Error(`Memory API returned ${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (!Array.isArray(payload.memories)) {
+    return [];
+  }
+
+  return payload.memories.map((memory) => ({
+    pointId: memory.pointId ?? "",
+    sessionId: memory.sessionId ?? "",
+    userMessage: memory.userMessage ?? "",
+    assistantMessage: memory.assistantMessage ?? "",
+    createdAt: memory.createdAt ?? "",
+    vectorSize: Number(memory.vectorSize) || 0,
+    vectorPreview: Array.isArray(memory.vectorPreview) ? memory.vectorPreview : []
   }));
 }

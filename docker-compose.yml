@@ -7,15 +7,15 @@ services:
     environment:
       BONSAI_LLM_HOST: 0.0.0.0
       BONSAI_LLM_PORT: 8081
-      BONSAI_LLM_ALIAS: gemma-4-e2b-it
-      BONSAI_LLM_HF_REPO: unsloth/gemma-4-E2B-it-GGUF
-      BONSAI_LLM_HF_FILE: gemma-4-E2B-it-Q4_K_M.gguf
-      BONSAI_LLM_CTX_SIZE: 2048
-      BONSAI_LLM_THREADS: 4
-      BONSAI_LLM_PARALLEL: 1
-      BONSAI_LLM_BATCH: 256
-      BONSAI_LLM_UBATCH: 128
-      BONSAI_LLM_GPU_LAYERS: 0
+      BONSAI_LLM_ALIAS: ${BONSAI_LLM_ALIAS:-gemma-4-e2b-it}
+      BONSAI_LLM_HF_REPO: ${BONSAI_LLM_HF_REPO:-unsloth/gemma-4-E2B-it-GGUF}
+      BONSAI_LLM_HF_FILE: ${BONSAI_LLM_HF_FILE:-gemma-4-E2B-it-Q4_K_M.gguf}
+      BONSAI_LLM_CTX_SIZE: ${BONSAI_LLM_CTX_SIZE:-2048}
+      BONSAI_LLM_THREADS: ${BONSAI_LLM_THREADS:-4}
+      BONSAI_LLM_PARALLEL: ${BONSAI_LLM_PARALLEL:-1}
+      BONSAI_LLM_BATCH: ${BONSAI_LLM_BATCH:-256}
+      BONSAI_LLM_UBATCH: ${BONSAI_LLM_UBATCH:-128}
+      BONSAI_LLM_GPU_LAYERS: ${BONSAI_LLM_GPU_LAYERS:-0}
       HF_TOKEN: ${HF_TOKEN:-}
     volumes:
       - llm-cache:/root/.cache
@@ -29,6 +29,15 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  memorydb:
+    image: qdrant/qdrant:v1.15.4
+    container_name: bonsai-memorydb
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -39,13 +48,20 @@ services:
       BONSAI_STATIC_DIR: /app/static
       BONSAI_PUBLIC_API_BASE: ""
       BONSAI_LLM_CHAT_STREAM_URL: http://llm:8081/v1/chat/completions
-      BONSAI_LLM_MODEL: gemma-4-e2b-it
+      BONSAI_LLM_MODEL: ${BONSAI_LLM_MODEL:-gemma-4-e2b-it}
+      BONSAI_MEMORY_QDRANT_URL: http://memorydb:6333
+      BONSAI_MEMORY_COLLECTION: bonsai-memory
+      BONSAI_MEMORY_SEARCH_LIMIT: 3
+      BONSAI_MEMORY_VECTOR_SIZE: 192
     depends_on:
       llm:
         condition: service_healthy
+      memorydb:
+        condition: service_started
     ports:
       - "8080:8080"
     restart: unless-stopped
 
 volumes:
   llm-cache:
+  qdrant-storage:

@@ -139,7 +139,7 @@ func buildChatCompletionsRequest(model string, request domain.ChatRequest, senso
 	messages := []chatCompletionsMessage{
 		{
 			Role:    "system",
-			Content: buildSystemPrompt(sensors, replyLanguage),
+			Content: buildSystemPrompt(sensors, replyLanguage, request.Memories),
 		},
 	}
 
@@ -201,7 +201,7 @@ func buildTranslationCompletionsRequest(
 	}
 }
 
-func buildSystemPrompt(sensors domain.SensorSnapshot, replyLanguage string) string {
+func buildSystemPrompt(sensors domain.SensorSnapshot, replyLanguage string, memories []domain.ChatMemory) string {
 	if replyLanguage == domain.ReplyLanguageEnglish {
 		return fmt.Sprintf(strings.TrimSpace(`
 You are the voice of a bonsai and should respond in natural English.
@@ -219,6 +219,7 @@ Current observations:
 - Illuminance: %.0f lx
 - Last updated: %s
 - Sensor source: %s
+%s
 `),
 			sensors.Temperature,
 			sensors.Humidity,
@@ -226,6 +227,7 @@ Current observations:
 			sensors.Illuminance,
 			blankFallback(sensors.LastUpdated, "unknown"),
 			blankFallback(sensors.Source, "unknown"),
+			buildMemoryPromptSection(memories, replyLanguage),
 		)
 	}
 
@@ -245,6 +247,7 @@ Current observations:
 - 照度: %.0f lx
 - 更新時刻: %s
 - センサソース: %s
+%s
 `),
 		sensors.Temperature,
 		sensors.Humidity,
@@ -252,7 +255,61 @@ Current observations:
 		sensors.Illuminance,
 		blankFallback(sensors.LastUpdated, "unknown"),
 		blankFallback(sensors.Source, "unknown"),
+		buildMemoryPromptSection(memories, replyLanguage),
 	)
+}
+
+func buildMemoryPromptSection(memories []domain.ChatMemory, replyLanguage string) string {
+	if len(memories) == 0 {
+		return ""
+	}
+
+	lines := make([]string, 0, len(memories)+2)
+	if replyLanguage == domain.ReplyLanguageEnglish {
+		lines = append(lines, "", "Relevant past memories for this session:")
+		for index, memory := range memories {
+			lines = append(lines, fmt.Sprintf("%d. %s", index+1, formatMemoryLine(memory, true)))
+		}
+		lines = append(lines, "Use them only when they help the current reply, and do not overstate uncertain details.")
+		return strings.Join(lines, "\n")
+	}
+
+	lines = append(lines, "", "このセッションに関連する過去の記憶:")
+	for index, memory := range memories {
+		lines = append(lines, fmt.Sprintf("%d. %s", index+1, formatMemoryLine(memory, false)))
+	}
+	lines = append(lines, "現在の質問に役立つときだけ自然に参照し、不確かな内容は断定しないでください。")
+	return strings.Join(lines, "\n")
+}
+
+func formatMemoryLine(memory domain.ChatMemory, english bool) string {
+	if english {
+		return fmt.Sprintf(
+			"User: %s / Assistant: %s",
+			clipPromptText(memory.UserMessage, 120),
+			clipPromptText(memory.AssistantMessage, 160),
+		)
+	}
+
+	return fmt.Sprintf(
+		"ユーザー: %s / 応答: %s",
+		clipPromptText(memory.UserMessage, 120),
+		clipPromptText(memory.AssistantMessage, 160),
+	)
+}
+
+func clipPromptText(text string, limit int) string {
+	text = strings.TrimSpace(text)
+	if text == "" || limit <= 0 {
+		return ""
+	}
+
+	runes := []rune(text)
+	if len(runes) <= limit {
+		return text
+	}
+
+	return strings.TrimSpace(string(runes[:limit])) + "..."
 }
 
 func buildTranslationSystemPrompt(targetLanguage string) string {

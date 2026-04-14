@@ -147,13 +147,38 @@ func TestBuildSystemPromptIncludesPlayfulJapaneseToneGuidance(t *testing.T) {
 		Illuminance:  8200,
 		LastUpdated:  "2026-04-02T20:30:00+09:00",
 		Source:       "live",
-	}, domain.ReplyLanguageJapanese)
+	}, domain.ReplyLanguageJapanese, nil)
 
 	if !strings.Contains(systemPrompt, "親しみやすく少し愛嬌のある盆栽らしい人格") {
 		t.Fatalf("system prompt missing playful japanese guidance: %s", systemPrompt)
 	}
 	if !strings.Contains(systemPrompt, "土壌水分: 31%") {
 		t.Fatalf("system prompt missing japanese sensors: %s", systemPrompt)
+	}
+}
+
+func TestBuildSystemPromptIncludesRecalledMemories(t *testing.T) {
+	t.Parallel()
+
+	systemPrompt := buildSystemPrompt(domain.SensorSnapshot{
+		Temperature:  23.1,
+		Humidity:     48,
+		SoilMoisture: 31,
+		Illuminance:  8200,
+		LastUpdated:  "2026-04-02T20:30:00+09:00",
+		Source:       "live",
+	}, domain.ReplyLanguageJapanese, []domain.ChatMemory{
+		{
+			UserMessage:      "先週は水やりを控えめにしたいと話したよね",
+			AssistantMessage: "はい、表土が乾いてから少量ずつ確認する方針でした。",
+		},
+	})
+
+	if !strings.Contains(systemPrompt, "このセッションに関連する過去の記憶") {
+		t.Fatalf("system prompt missing memory header: %s", systemPrompt)
+	}
+	if !strings.Contains(systemPrompt, "先週は水やりを控えめにしたい") {
+		t.Fatalf("system prompt missing recalled memory: %s", systemPrompt)
 	}
 }
 
