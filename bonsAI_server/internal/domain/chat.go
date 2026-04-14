@@ -6,9 +6,11 @@ type ChatMessage struct {
 }
 
 type ChatRequest struct {
-	Message string          `json:"message"`
-	History []ChatMessage   `json:"history"`
-	Sensors *SensorSnapshot `json:"sensors"`
+	SessionID string          `json:"sessionId"`
+	Message   string          `json:"message"`
+	History   []ChatMessage   `json:"history"`
+	Sensors   *SensorSnapshot `json:"sensors"`
+	Memories  []ChatMemory    `json:"-"`
 }
 
 type ChatTranslationMessage struct {
